@@ -25,18 +25,12 @@ def beam2bl(beam, theta, lmax):
     harmonic space from its circular beam profile b(theta) in real
     space.
     Parameters
-    ----------
-    beam : array
-        Circular beam profile b(theta).
-    theta : array
-        Radius at which the beam profile is given. Has to be given
+        beam (array): Circular beam profile b(theta).
+        theta (array): Radius at which the beam profile is given. Has to be given
         in radians with same size as beam.
-    lmax : integer
-        Maximum multipole moment at which to compute b(l).
-    Returns
-    -------
-    bl : array
-        Beam window function b(l).
+        lmax (int) : Maximum multipole moment at which to compute b(l).
+    Returns:
+        bl (array) : Beam window function b(l).
     """
 
     nx = len(theta)
@@ -65,6 +59,17 @@ def beam2bl(beam, theta, lmax):
 
 
 def integrate (beam, theta):
+    
+    """ integrates over beam. 
+    
+    Parameters:
+        beam (arr): beam array 
+        theta (arr): theta array
+   
+    Returns:   
+        integrate (arr): the integrate over the beam.
+    
+    """
     nx = len(theta)
     nb = len(beam)
     if nb != nx:
@@ -107,15 +112,39 @@ def integrate_dir (beam, theta, phi):
 
 def gabor(freq,sigma,theta):
     
-    arg=-(theta**2)/(2*sigma*sigma) + 1.j * freq*theta
+    """generates a gabor wavelelt profile in real space.
     
+    Parameters:
+        freq(float): frequency of oscillations (l_0)
+        sigma (int): maximum number of scales
+        theta (arr): array of theta  
+        
+    Returns:
+        gabor(array(map)): gabor wavelet in real space 
+    
+    """
+    arg=-(theta**2)/(2*sigma*sigma) + 1.j * freq*theta
     g=np.exp(arg)
     g/=2*np.pi*sigma*sigma
+    
     return g
 
 
-def morlet (f, sigma, theta, lmax):
-    wv=gabor(f,sigma,theta)
+def morlet (freq, sigma, theta, lmax):
+    
+    """generates a morlet wavelelt profile in real space.
+    
+    Parameters:
+        freq (float): frequency of oscillations (l_0)
+        sigma (int): maximum number of scales
+        theta (arr): array of theta  
+        lmax (int): maximum multipole
+   
+    Returns:
+        morlet(array(map)): morlet wavelet in real space 
+    
+    """
+    wv=gabor(freq,sigma,theta)
     wvm=gabor(0,sigma, theta)
     B=integrate(wv,theta)/integrate(wvm,theta)
     mor=wv-B*wvm
@@ -128,6 +157,19 @@ def morlet (f, sigma, theta, lmax):
  
 
 def morlet_arr (resol, jmax, lmax, theta_bin) :
+    
+    """ generates an array of morlet wavelets in l space. 
+    
+    Parameters: 
+        resol (float): size of pixels in rad
+        jmax (int): maximum number of scales
+        lmax (int): maximum multipole 
+        theta_bin (int): binning number of theta
+    
+    Returns: 
+        morlet_arr (array): list of morlet wavelet profiles
+    
+    """
     mor=[]
     fl2beam=[]
     
@@ -215,10 +257,6 @@ def convolve_dir (field_l, wavelet_l, lmax, theta_arr , phi_arr):
     return h 
                 
                 
-                
-                
-
-
 
 def gabor_dir(freq, sigma, phi0, theta, phi):
     
@@ -392,10 +430,6 @@ def compS2 ( i1 , mor_l , jmax  , nside , gaus_l = None , lmax = None , resol = 
         i2.append(i2_tmp)
     
     return S2 , i2
-
-
-
-
 
 
 
