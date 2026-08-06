@@ -1,0 +1,74 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-package"
+dynamic = ["version"]
+description = "Spherical scattering transform utilities for Healpy maps"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "ArefeAbghari", email = "arefe.abghari@yahoo.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "healpy",
+  "numpy",
+  "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
+[project.urls]
+Documentation = "https://github.com/ArefeAbghari/my-package#readme"
+Issues = "https://github.com/ArefeAbghari/my-package/issues"
+Source = "https://github.com/ArefeAbghari/my-package"
+
+[tool.hatch.version]
+path = "src/my_package/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/my_package tests}"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source_pkgs = ["my_package", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/my_package/__about__.py",
+]
+
+[tool.coverage.paths]
+my_package = ["src/my_package", "*/my-package/src/my_package"]
+tests = ["tests", "*/my-package/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
