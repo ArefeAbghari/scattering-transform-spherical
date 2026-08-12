@@ -29,23 +29,31 @@ def gabor(freq: float, sigma: float, theta: np.ndarray) -> np.ndarray:
     return np.exp(arg) #/ (2 * np.pi * sigma**2)
 
 
-def morlet(freq: float, sigma: float, theta: np.ndarray) -> np.ndarray:
+def morlet(freq: float, sigma: float, theta: np.ndarray, norm="L2") -> np.ndarray:
     """Generate a zero-mean Morlet wavelet profile in real space."""
 
     wav = gabor(freq, sigma, theta)
     low_pass = gabor(0.0, sigma, theta)
     correction = integrate(wav, theta) / integrate(low_pass, theta)
     wavelet = wav - correction * low_pass
-    norm = integrate(np.abs(wavelet)**2 , theta)
-    return wavelet/np.sqrt(norm)
+
+    if norm=="L2":
+        norm = np.sqrt(integrate(np.abs(wavelet)**2 , theta))
+    elif norm=="L1":
+        norm = integrate(np.abs(wavelet) , theta)
+    return wavelet/norm
 
 def gaussian(
-    sigma: float, theta: np.ndarray) -> np.ndarray:
+    sigma: float, theta: np.ndarray, norm="L2") -> np.ndarray:
     """Generate a real-space Gaussian smoothing profile."""
 
     arg = -(theta**2) / (2 * sigma**2)
-
-    return np.exp(arg)
+    gaus = np.exp(arg)
+    if norm=="L2":
+        norm = np.sqrt(integrate(np.abs(gaus)**2 , theta))
+    elif norm=="L1":
+        norm = integrate(np.abs(gaus) , theta)
+    return gaus/norm
 
 
 def theta_grid(theta_bin: int) -> np.ndarray:
@@ -82,6 +90,7 @@ def filter_bank_real (
     nside: int,
     jmax: int,
     theta_bin: int = 1000,
+    norm = "L2"
 ) :
     """Build real-space Morlet filters for dyadic scales."""
 
@@ -96,10 +105,10 @@ def filter_bank_real (
     #filters["phi"] = []
 
     filters["psi"] = [
-        morlet(frequency(resol, j), sigma(resol, j), theta)
+        morlet(frequency(resol, j), sigma(resol, j), theta, norm)
         for j in range(jmax)
     ]
-    filters["phi"] = [ gaussian(sigma(resol, j), theta)
+    filters["phi"] = [ gaussian(sigma(resol, j), theta, norm)
         for j in range(jmax)]
     return  filters
 
@@ -135,6 +144,7 @@ def filter_bank_harmonic (
     jmax: int,
     lmax: int = None,
     theta_bin: int = 1000,
+    norm = "L2"
 ) :
     """Build harmonic-space Morlet filters for dyadic scales."""
 
@@ -152,10 +162,10 @@ def filter_bank_harmonic (
     #filters["phi"] = []
 
     filters["psi"] = [
-        beam2bl(morlet(frequency(resol, j), sigma(resol, j), theta), theta, lmax)
+        beam2bl(morlet(frequency(resol, j), sigma(resol, j), theta, norm), theta, lmax)
         for j in range(jmax)
     ]
-    filters["phi"] = [hp.gauss_beam(2 * np.sqrt(2 * np.log(2)) * sigma(resol, j), lmax=lmax)
+    filters["phi"] = [hp.gauss_beam(2 * np.sqrt(2 * np. log(2)) * sigma(resol, j), lmax=lmax)
         for j in range(jmax)]
     return  filters
 
