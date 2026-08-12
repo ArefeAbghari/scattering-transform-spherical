@@ -32,10 +32,12 @@ def gabor(freq: float, sigma: float, theta: np.ndarray) -> np.ndarray:
 def morlet(freq: float, sigma: float, theta: np.ndarray) -> np.ndarray:
     """Generate a zero-mean Morlet wavelet profile in real space."""
 
-    wavelet = gabor(freq, sigma, theta)
+    wav = gabor(freq, sigma, theta)
     low_pass = gabor(0.0, sigma, theta)
-    correction = integrate(wavelet, theta) / integrate(low_pass, theta)
-    return wavelet - correction * low_pass
+    correction = integrate(wav, theta) / integrate(low_pass, theta)
+    wavelet = wav - correction * low_pass
+    norm = integrate(np.abs(wavelet)**2 , theta)
+    return wavelet/np.sqrt(norm)
 
 def gaussian(
     sigma: float, theta: np.ndarray) -> np.ndarray:
@@ -93,6 +95,33 @@ def filter_bank_real (
     #filters["psi"] = []
     #filters["phi"] = []
 
+    filters["psi"] = [
+        morlet(frequency(resol, j), sigma(resol, j), theta)
+        for j in range(jmax)
+    ]
+    filters["phi"] = [ gaussian(sigma(resol, j), theta)
+        for j in range(jmax)]
+    return  filters
+
+
+def filter_bank_profile (
+    nside: int,
+    jmax: int
+) :
+    """Build real-space Morlet filters for dyadic scales."""
+
+    hp = _import_healpy()
+    _validate_jmax(jmax)
+    _validate_nside(nside, hp)
+    resol = hp.nside2resol(nside, arcmin=False)
+    #theta = theta_grid(theta_bin)
+    
+    filters = {}
+    #filters["psi"] = []
+    #filters["phi"] = []
+    npix = hp.nside2npix(nside)
+    #map = np.zeros(npix)
+    theta, _ = hp.pixelfunc.pix2ang(np.arange(npix))
     filters["psi"] = [
         morlet(frequency(resol, j), sigma(resol, j), theta)
         for j in range(jmax)

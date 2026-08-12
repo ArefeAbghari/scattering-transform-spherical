@@ -8,6 +8,7 @@ import numpy as np
 from scipy.integrate import trapezoid
 from scipy.integrate import simpson
 
+
 ArrayLike = Union[np.ndarray, Sequence[float]]
 
 
@@ -64,6 +65,16 @@ def integrate(beam: ArrayLike, theta: ArrayLike) -> np.number:
 
     return 2 * np.pi * trapezoid(beam_arr * np.sin(theta_arr), theta_arr)
 
+
+# def beam2profile(beam: ArrayLike, theta: ArrayLike, nside: int) -> np.number:
+#     """Integrate an axisymmetric beam over the sphere."""
+
+#     beam_arr = np.asarray(beam)
+#     theta_arr = np.asarray(theta, dtype=float)
+#     _validate_same_shape(beam_arr, theta_arr)
+#     ipix = hp.pixelfunc.ang2pix(nside, theta, )
+
+#     return 
 
 def integrate_dir(beam: ArrayLike, theta: ArrayLike, phi: ArrayLike) -> np.number:
     """Integrate a directional beam sampled over ``theta`` and ``phi``."""
