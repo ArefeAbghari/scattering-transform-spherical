@@ -9,6 +9,7 @@ from .utils import beam2bl, integrate, integrate_dir
 from .wavelets import (
     filter_bank_harmonic,
     filter_bank_real,
+    filter_bank_profile,
     gabor,
     gaussian,
     morlet,

@@ -47,6 +47,8 @@ class ScatteringSph:
         Maximum multipole. Defaults to ``3 * nside - 1``.
     theta_bin
         Number of angular samples used to build real-space filters.
+    norm
+        Wavelet normalization. Use ``"L2"``, ``"L1"``, or ``None``.
     """
 
     nside: int
@@ -54,6 +56,7 @@ class ScatteringSph:
     order: int = 2
     lmax: Optional[int] = None
     theta_bin: int = 1000
+    norm: Optional[str] = "L2"
     _hp: object = field(default=None, init=False, repr=False)
     _resol: float = field(init=False, repr=False)
     _wavelet_l: Optional[List[np.ndarray]] = field(default=None, init=False, repr=False)
@@ -74,6 +77,8 @@ class ScatteringSph:
             raise ValueError("order must be non-negative")
         if self.theta_bin < 2:
             raise ValueError("theta_bin must be at least 2")
+        if self.norm not in {"L2", "L1", None}:
+            raise ValueError("norm must be 'L2', 'L1', or None")
 
         self.lmax = 3 * self.nside - 1 if self.lmax is None else self.lmax
         if self.lmax < 0:
@@ -96,6 +101,7 @@ class ScatteringSph:
                 jmax=self.J,
                 lmax=self.lmax,
                 theta_bin=self.theta_bin,
+                norm=self.norm,
             )["psi"]
 
         return [filter_.copy() for filter_ in self._wavelet_l]
@@ -109,6 +115,7 @@ class ScatteringSph:
                 jmax=self.J,
                 lmax=self.lmax,
                 theta_bin=self.theta_bin,
+                norm=self.norm,
             )["phi"]
 
         return [filter_.copy() for filter_ in self._gaussian_l]
@@ -121,6 +128,7 @@ class ScatteringSph:
                 nside=self.nside,
                 jmax=self.J,
                 theta_bin=self.theta_bin,
+                norm=self.norm,
             )
         if space == "harmonic":
             return filter_bank_harmonic(
@@ -128,6 +136,7 @@ class ScatteringSph:
                 jmax=self.J,
                 lmax=self.lmax,
                 theta_bin=self.theta_bin,
+                norm=self.norm,
             )
         raise ValueError("space must be 'real' or 'harmonic'")
 
@@ -146,7 +155,8 @@ class ScatteringSph:
         coefficient along path ``j1=1, j2=3``.
         """
 
-        hmap = np.asarray(hmap)
+        if not np.ma.isMaskedArray(hmap):
+            hmap = np.asarray(hmap)
         expected_npix = self._hp.nside2npix(self.nside)
         if hmap.size != expected_npix:
             raise ValueError(
@@ -176,7 +186,7 @@ class ScatteringSph:
                 input_alm = self._hp.map2alm(
                     input_map,
                     lmax=self.lmax,
-                    use_pixel_weights=True,
+                    use_pixel_weights=False,
                 )
 
                 start_scale = path[-1] + 1 if path else 0

@@ -116,6 +116,38 @@ def test_scattering_sph_filter_bank_can_return_real_filters(monkeypatch):
     assert filters["phi"][1].shape == (THETA_BIN,)
 
 
+def test_scattering_sph_passes_norm_to_filter_bank(monkeypatch):
+    monkeypatch.setitem(sys.modules, "healpy", _fake_healpy())
+
+    normalized = ScatteringSph(nside=NSIDE, J=2, order=1, theta_bin=THETA_BIN, norm="L2")
+    unnormalized = ScatteringSph(nside=NSIDE, J=2, order=1, theta_bin=THETA_BIN, norm=None)
+
+    normalized_filter = normalized.filter_bank(space="real")["psi"][0]
+    unnormalized_filter = unnormalized.filter_bank(space="real")["psi"][0]
+
+    assert not np.allclose(normalized_filter, unnormalized_filter)
+
+
+def test_scattering_sph_preserves_masked_maps(monkeypatch):
+    fake_hp = _fake_healpy()
+    seen = {}
+
+    def map2alm(hmap, lmax=None, use_pixel_weights=True):
+        seen["is_masked"] = np.ma.isMaskedArray(hmap)
+        return np.full(lmax + 1, np.ma.mean(hmap), dtype=np.complex128)
+
+    fake_hp.map2alm = map2alm
+    monkeypatch.setitem(sys.modules, "healpy", fake_hp)
+
+    hmap = np.ma.array(np.ones(NPIX), mask=np.zeros(NPIX, dtype=bool))
+    hmap.mask[0] = True
+
+    scattering = ScatteringSph(nside=NSIDE, J=1, order=1, theta_bin=THETA_BIN)
+    scattering(hmap)
+
+    assert seen["is_masked"] is True
+
+
 def test_scattering_sph_validates_map_size(monkeypatch):
     monkeypatch.setitem(sys.modules, "healpy", _fake_healpy())
 

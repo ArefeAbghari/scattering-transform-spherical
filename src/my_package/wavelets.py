@@ -29,7 +29,7 @@ def gabor(freq: float, sigma: float, theta: np.ndarray) -> np.ndarray:
     return np.exp(arg) #/ (2 * np.pi * sigma**2)
 
 
-def morlet(freq: float, sigma: float, theta: np.ndarray, norm="L2") -> np.ndarray:
+def morlet(freq: float, sigma: float, theta: np.ndarray, norm="L1") -> np.ndarray:
     """Generate a zero-mean Morlet wavelet profile in real space."""
 
     wav = gabor(freq, sigma, theta)
@@ -38,22 +38,26 @@ def morlet(freq: float, sigma: float, theta: np.ndarray, norm="L2") -> np.ndarra
     wavelet = wav - correction * low_pass
 
     if norm=="L2":
-        norm = np.sqrt(integrate(np.abs(wavelet)**2 , theta))
+        const = np.sqrt(integrate(np.abs(wavelet)**2 , theta))
     elif norm=="L1":
-        norm = integrate(np.abs(wavelet) , theta)
-    return wavelet/norm
+        const = integrate(np.abs(wavelet) , theta)
+    elif norm is None:
+        const = 1
+    return wavelet/const
 
 def gaussian(
-    sigma: float, theta: np.ndarray, norm="L2") -> np.ndarray:
+    sigma: float, theta: np.ndarray, norm="L1") -> np.ndarray:
     """Generate a real-space Gaussian smoothing profile."""
 
     arg = -(theta**2) / (2 * sigma**2)
     gaus = np.exp(arg)
     if norm=="L2":
-        norm = np.sqrt(integrate(np.abs(gaus)**2 , theta))
+        const = np.sqrt(integrate(np.abs(gaus)**2 , theta))
     elif norm=="L1":
-        norm = integrate(np.abs(gaus) , theta)
-    return gaus/norm
+        const = integrate(np.abs(gaus) , theta)
+    elif norm is None:
+        const = 1
+    return gaus/const
 
 
 def theta_grid(theta_bin: int) -> np.ndarray:
@@ -90,7 +94,7 @@ def filter_bank_real (
     nside: int,
     jmax: int,
     theta_bin: int = 1000,
-    norm = "L2"
+    norm = "L1"
 ) :
     """Build real-space Morlet filters for dyadic scales."""
 
@@ -115,7 +119,8 @@ def filter_bank_real (
 
 def filter_bank_profile (
     nside: int,
-    jmax: int
+    jmax: int, 
+    norm = "L1"
 ) :
     """Build real-space Morlet filters for dyadic scales."""
 
@@ -130,7 +135,8 @@ def filter_bank_profile (
     #filters["phi"] = []
     npix = hp.nside2npix(nside)
     #map = np.zeros(npix)
-    theta, _ = hp.pixelfunc.pix2ang(np.arange(npix))
+    theta, _ = hp.pixelfunc.pix2ang(nside, np.arange(npix))
+
     filters["psi"] = [
         morlet(frequency(resol, j), sigma(resol, j), theta)
         for j in range(jmax)
@@ -144,7 +150,7 @@ def filter_bank_harmonic (
     jmax: int,
     lmax: int = None,
     theta_bin: int = 1000,
-    norm = "L2"
+    norm = "L1"
 ) :
     """Build harmonic-space Morlet filters for dyadic scales."""
 
@@ -195,4 +201,5 @@ __all__ = [
     "theta_grid",
     "filter_bank_real",
     "filter_bank_harmonic",
+    "filter_bank_profile"
 ]
