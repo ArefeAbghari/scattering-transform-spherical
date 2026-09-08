@@ -162,8 +162,9 @@ class ScatteringSph:
             raise ValueError(
                 f"hmap has {hmap.size} pixels, expected {expected_npix} for nside={self.nside}"
             )
+        coefficient_mask = self._coefficient_mask(hmap)
 
-        coefficients: CoefficientDict = {"S0": {(): self._mean_value(hmap)}}
+        coefficients: CoefficientDict = {"S0": {(): self._mean_value(hmap, coefficient_mask)}}
         intermediate_maps: IntermediateDict = {"I0": {(): hmap.copy()}} if keep_maps else {}
         if self.order == 0:
             self.coefficients_ = coefficients
@@ -173,37 +174,48 @@ class ScatteringSph:
         wavelets_l = self.wavelet_filters()
         gaussians_l = self.gaussian_filters() if smooth else None
 
-        current_maps: List[Tuple[ScalePath, np.ndarray]] = [((), hmap)]
         for current_order in range(1, self.order + 1):
             order_key = f"S{current_order}"
             intermediate_key = f"I{current_order}"
             coefficients[order_key] = {}
             if keep_maps:
                 intermediate_maps[intermediate_key] = {}
-            next_maps = []
 
-            for path, input_map in current_maps:
-                input_alm = self._hp.map2alm(
-                    input_map,
-                    lmax=self.lmax,
-                    use_pixel_weights=False,
+        def compute_path(
+            path: ScalePath,
+            input_map: np.ndarray,
+            current_order: int,
+        ) -> None:
+            if current_order > self.order:
+                return
+
+            input_alm = self._hp.map2alm(
+                input_map,
+                lmax=self.lmax,
+                use_pixel_weights=False,
+            )
+
+            order_key = f"S{current_order}"
+            intermediate_key = f"I{current_order}"
+            start_scale = path[-1] + 1 if path else 0
+
+            for j in range(start_scale, self.J):
+                wavelet_l = wavelets_l[j]
+                new_path = path + (j,)
+                filtered_alm = self._hp.almxfl(input_alm, wavelet_l)
+                modulus_map = np.abs(
+                    self._hp.alm2map(filtered_alm, self.nside, lmax=self.lmax)
                 )
+                coefficient_map = self._smooth_map(modulus_map, gaussians_l, j)
+                coefficients[order_key][new_path] = self._mean_value(
+                    coefficient_map,
+                    coefficient_mask,
+                )
+                if keep_maps:
+                    intermediate_maps[intermediate_key][new_path] = modulus_map.copy()
+                compute_path(new_path, modulus_map, current_order + 1)
 
-                start_scale = path[-1] + 1 if path else 0
-                for j in range(start_scale, self.J):
-                    wavelet_l = wavelets_l[j]
-                    new_path = path + (j,)
-                    filtered_alm = self._hp.almxfl(input_alm, wavelet_l)
-                    modulus_map = np.abs(
-                        self._hp.alm2map(filtered_alm, self.nside, lmax=self.lmax)
-                    )
-                    coefficient_map = self._smooth_map(modulus_map, gaussians_l, j)
-                    coefficients[order_key][new_path] = self._mean_value(coefficient_map)
-                    if keep_maps:
-                        intermediate_maps[intermediate_key][new_path] = modulus_map.copy()
-                    next_maps.append((new_path, modulus_map))
-
-            current_maps = next_maps
+        compute_path((), hmap, 1)
 
         self.coefficients_ = coefficients
         self.intermediate_maps_ = intermediate_maps
@@ -279,7 +291,18 @@ class ScatteringSph:
         )
 
     @staticmethod
-    def _mean_value(values: np.ndarray) -> Union[float, complex]:
+    def _coefficient_mask(values: np.ndarray) -> Optional[np.ndarray]:
+        if not np.ma.isMaskedArray(values):
+            return None
+        return np.ma.getmaskarray(values)
+
+    @staticmethod
+    def _mean_value(
+        values: np.ndarray,
+        mask: Optional[np.ndarray] = None,
+    ) -> Union[float, complex]:
+        if mask is not None:
+            values = np.asarray(values)[~mask]
         mean = np.real_if_close(np.mean(values))
         return mean.item()
 

@@ -148,6 +148,32 @@ def test_scattering_sph_preserves_masked_maps(monkeypatch):
     assert seen["is_masked"] is True
 
 
+def test_scattering_sph_averages_coefficients_over_unmasked_pixels(monkeypatch):
+    fake_hp = _fake_healpy()
+
+    def map2alm(hmap, lmax=None, use_pixel_weights=True):
+        return np.ones(lmax + 1, dtype=np.complex128)
+
+    def alm2map(alm, nside, lmax=None):
+        return np.arange(12 * nside**2, dtype=float)
+
+    fake_hp.map2alm = map2alm
+    fake_hp.alm2map = alm2map
+    monkeypatch.setitem(sys.modules, "healpy", fake_hp)
+
+    hmap = np.ma.array(np.arange(NPIX, dtype=float), mask=np.zeros(NPIX, dtype=bool))
+    hmap[0] = 1e9
+    hmap.mask[0] = True
+
+    scattering = ScatteringSph(nside=NSIDE, J=1, order=1, theta_bin=THETA_BIN)
+    coefficients = scattering(hmap)
+
+    expected_mean = np.mean(np.arange(1, NPIX, dtype=float))
+
+    assert coefficients["S0"][()] == expected_mean
+    assert coefficients["S1"][(0,)] == expected_mean
+
+
 def test_scattering_sph_validates_map_size(monkeypatch):
     monkeypatch.setitem(sys.modules, "healpy", _fake_healpy())
 
