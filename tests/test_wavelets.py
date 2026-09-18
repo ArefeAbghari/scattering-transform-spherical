@@ -3,7 +3,7 @@ import types
 
 import numpy as np
 
-from my_package import filter_bank_harmonic, filter_bank_real
+from hawcs import filter_bank_harmonic, filter_bank_real
 
 
 def _fake_healpy():

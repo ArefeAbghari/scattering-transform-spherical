@@ -145,6 +145,7 @@ class ScatteringSph:
         hmap: np.ndarray,
         smooth: bool = False,
         keep_maps: bool = True,
+        mask: Optional[np.ndarray] = None,
     ) -> CoefficientDict:
         """Compute scattering coefficients up to ``self.order``.
 
@@ -162,9 +163,9 @@ class ScatteringSph:
             raise ValueError(
                 f"hmap has {hmap.size} pixels, expected {expected_npix} for nside={self.nside}"
             )
-        coefficient_mask = self._coefficient_mask(hmap)
+        coefficient_weights = self._coefficient_weights(hmap, mask)
 
-        coefficients: CoefficientDict = {"S0": {(): self._mean_value(hmap, coefficient_mask)}}
+        coefficients: CoefficientDict = {"S0": {(): self._mean_value(hmap, coefficient_weights)}}
         intermediate_maps: IntermediateDict = {"I0": {(): hmap.copy()}} if keep_maps else {}
         if self.order == 0:
             self.coefficients_ = coefficients
@@ -209,7 +210,7 @@ class ScatteringSph:
                 coefficient_map = self._smooth_map(modulus_map, gaussians_l, j)
                 coefficients[order_key][new_path] = self._mean_value(
                     coefficient_map,
-                    coefficient_mask,
+                    coefficient_weights,
                 )
                 if keep_maps:
                     intermediate_maps[intermediate_key][new_path] = modulus_map.copy()
@@ -226,10 +227,16 @@ class ScatteringSph:
         hmap: np.ndarray,
         smooth: bool = False,
         keep_maps: bool = True,
+        mask: Optional[np.ndarray] = None,
     ) -> CoefficientDict:
         """Compute coefficients and store them on the object."""
 
-        return self.compute_coefficients(hmap, smooth=smooth, keep_maps=keep_maps)
+        return self.compute_coefficients(
+            hmap,
+            smooth=smooth,
+            keep_maps=keep_maps,
+            mask=mask,
+        )
 
     def coefficient(
         self,
@@ -291,19 +298,50 @@ class ScatteringSph:
         )
 
     @staticmethod
-    def _coefficient_mask(values: np.ndarray) -> Optional[np.ndarray]:
-        if not np.ma.isMaskedArray(values):
-            return None
-        return np.ma.getmaskarray(values)
+    def _coefficient_weights(
+        values: np.ndarray,
+        mask: Optional[np.ndarray] = None,
+    ) -> Optional[np.ndarray]:
+        weights = None
+        if mask is not None and np.isscalar(mask) and np.isnan(mask):
+            mask = None
+        if mask is not None:
+            mask_array = np.asarray(mask, dtype=float)
+            if mask_array.shape != values.shape:
+                raise ValueError("mask must have the same shape as hmap")
+            if not np.all(np.isfinite(mask_array)):
+                raise ValueError("mask values must be finite")
+            if np.any((mask_array < 0) | (mask_array > 1)):
+                raise ValueError("mask values must be between 0 and 1")
+            weights = mask_array.copy()
+
+        if np.ma.isMaskedArray(values):
+            valid_pixels = ~np.ma.getmaskarray(values)
+            if weights is None:
+                weights = valid_pixels.astype(float)
+            else:
+                weights *= valid_pixels
+
+        return weights
 
     @staticmethod
     def _mean_value(
         values: np.ndarray,
-        mask: Optional[np.ndarray] = None,
+        weights: Optional[np.ndarray] = None,
     ) -> Union[float, complex]:
-        if mask is not None:
-            values = np.asarray(values)[~mask]
-        mean = np.real_if_close(np.mean(values))
+        values_array = (
+            np.ma.filled(values, 0)
+            if np.ma.isMaskedArray(values)
+            else np.asarray(values)
+        )
+        if weights is not None:
+            total_weight = np.sum(weights)
+            if total_weight == 0:
+                raise ValueError("mask excludes all pixels")
+            mean = np.sum(values_array * weights) / total_weight
+        else:
+            mean = np.mean(values_array)
+        mean = np.real_if_close(mean)
         return mean.item()
 
     def _require_coefficients(self) -> CoefficientDict:

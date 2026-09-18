@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "my-package"
+name = "hawcs"
 dynamic = ["version"]
 description = "Spherical scattering transform utilities for Healpy maps"
 readme = "README.md"
@@ -36,35 +36,35 @@ dev = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/ArefeAbghari/my-package#readme"
-Issues = "https://github.com/ArefeAbghari/my-package/issues"
-Source = "https://github.com/ArefeAbghari/my-package"
+Documentation = "https://github.com/ArefeAbghari/hawcs#readme"
+Issues = "https://github.com/ArefeAbghari/hawcs/issues"
+Source = "https://github.com/ArefeAbghari/hawcs"
 
 [tool.hatch.version]
-path = "src/my_package/__about__.py"
+path = "src/hawcs/__about__.py"
 
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/my_package tests}"
+check = "mypy --install-types --non-interactive {args:src/hawcs tests}"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source_pkgs = ["my_package", "tests"]
+source_pkgs = ["hawcs", "tests"]
 branch = true
 parallel = true
 omit = [
-  "src/my_package/__about__.py",
+  "src/hawcs/__about__.py",
 ]
 
 [tool.coverage.paths]
-my_package = ["src/my_package", "*/my-package/src/my_package"]
-tests = ["tests", "*/my-package/tests"]
+hawcs = ["src/hawcs", "*/hawcs/src/hawcs"]
+tests = ["tests", "*/hawcs/tests"]
 
 [tool.coverage.report]
 exclude_lines = [

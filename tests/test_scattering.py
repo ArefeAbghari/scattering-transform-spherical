@@ -3,7 +3,7 @@ import types
 
 import numpy as np
 
-from my_package import ScatteringSph
+from hawcs import ScatteringSph
 
 
 NSIDE = 16
@@ -172,6 +172,90 @@ def test_scattering_sph_averages_coefficients_over_unmasked_pixels(monkeypatch):
 
     assert coefficients["S0"][()] == expected_mean
     assert coefficients["S1"][(0,)] == expected_mean
+
+
+def test_scattering_sph_uses_mask_as_coefficient_weights(monkeypatch):
+    fake_hp = _fake_healpy()
+
+    def map2alm(hmap, lmax=None, use_pixel_weights=True):
+        return np.ones(lmax + 1, dtype=np.complex128)
+
+    def alm2map(alm, nside, lmax=None):
+        return np.arange(12 * nside**2, dtype=float)
+
+    fake_hp.map2alm = map2alm
+    fake_hp.alm2map = alm2map
+    monkeypatch.setitem(sys.modules, "healpy", fake_hp)
+
+    hmap = np.arange(NPIX, dtype=float)
+    mask = np.ones(NPIX, dtype=float)
+    mask[0] = 0.0
+    mask[1] = 0.5
+
+    scattering = ScatteringSph(nside=NSIDE, J=1, order=1, theta_bin=THETA_BIN)
+    coefficients = scattering(hmap, mask=mask)
+
+    expected_mean = np.sum(np.arange(NPIX, dtype=float) * mask) / np.sum(mask)
+
+    assert coefficients["S0"][()] == expected_mean
+    assert coefficients["S1"][(0,)] == expected_mean
+
+
+def test_scattering_sph_combines_explicit_mask_with_masked_map(monkeypatch):
+    monkeypatch.setitem(sys.modules, "healpy", _fake_healpy())
+
+    hmap = np.ma.array(np.arange(NPIX, dtype=float), mask=np.zeros(NPIX, dtype=bool))
+    hmap[0] = 1e9
+    hmap.mask[0] = True
+    mask = np.ones(NPIX, dtype=float)
+    mask[1] = 0.5
+
+    scattering = ScatteringSph(nside=NSIDE, J=1, order=0, theta_bin=THETA_BIN)
+    coefficients = scattering(hmap, mask=mask)
+
+    combined_weights = mask.copy()
+    combined_weights[0] = 0.0
+    expected_mean = np.sum(np.ma.filled(hmap, 0) * combined_weights) / np.sum(
+        combined_weights
+    )
+
+    assert coefficients["S0"][()] == expected_mean
+
+
+def test_scattering_sph_nan_mask_falls_back_to_masked_map(monkeypatch):
+    monkeypatch.setitem(sys.modules, "healpy", _fake_healpy())
+
+    hmap = np.ma.array(np.arange(NPIX, dtype=float), mask=np.zeros(NPIX, dtype=bool))
+    hmap[0] = 1e9
+    hmap.mask[0] = True
+
+    scattering = ScatteringSph(nside=NSIDE, J=1, order=0, theta_bin=THETA_BIN)
+    coefficients = scattering(hmap, mask=np.nan)
+
+    assert coefficients["S0"][()] == np.mean(np.arange(1, NPIX, dtype=float))
+
+
+def test_scattering_sph_validates_coefficient_mask(monkeypatch):
+    monkeypatch.setitem(sys.modules, "healpy", _fake_healpy())
+
+    scattering = ScatteringSph(nside=NSIDE, J=1, order=0, theta_bin=THETA_BIN)
+    hmap = np.ones(NPIX)
+
+    invalid_masks = [
+        np.ones(NPIX - 1),
+        np.full(NPIX, -0.1),
+        np.full(NPIX, 1.1),
+        np.full(NPIX, np.nan),
+        np.zeros(NPIX),
+    ]
+
+    for mask in invalid_masks:
+        try:
+            scattering(hmap, mask=mask)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("ScatteringSph should reject invalid masks")
 
 
 def test_scattering_sph_validates_map_size(monkeypatch):

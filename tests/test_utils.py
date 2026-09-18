@@ -1,7 +1,7 @@
 import numpy as np
 
 
-from my_package import beam2bl, integrate
+from hawcs import beam2bl, integrate
 
 
 def test_integrate_constant_beam_is_sphere_area():

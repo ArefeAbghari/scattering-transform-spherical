@@ -1,4 +1,4 @@
-# my-package
+# hawcs
 
 Utilities for building spherical Morlet wavelet filter banks and computing
 scattering coefficients on Healpy maps.
@@ -16,7 +16,7 @@ python -m pip install -e ".[dev]"
 ```python
 import healpy as hp
 
-from my_package import ScatteringSph
+from hawcs import ScatteringSph
 
 nside = 128
 hmap = hp.read_map("map.fits")
@@ -43,10 +43,10 @@ paths like `(0, 1, 2)`, but not `(1, 0, 2)` or `(1, 1, 2)`.
 
 ## Modules
 
-- `my_package.utils`: numerical integration and `beam2bl`.
-- `my_package.wavelets`: Gabor, Morlet, Gaussian, and filter-bank helpers.
-- `my_package.transforms`: first- and second-order scattering transforms.
-- `my_package.scattering`: high-level `ScatteringSph` interface.
+- `hawcs.utils`: numerical integration and `beam2bl`.
+- `hawcs.wavelets`: Gabor, Morlet, Gaussian, and filter-bank helpers.
+- `hawcs.transforms`: first- and second-order scattering transforms.
+- `hawcs.scattering`: high-level `ScatteringSph` interface.
 
 ## Development
 
